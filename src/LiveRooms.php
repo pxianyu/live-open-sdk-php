@@ -71,50 +71,25 @@ final class LiveRooms
         return LiveRoom::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function publish(string $roomId, string $idempotencyKey, array $payload = []): OperationResult
+    public function publish(string $roomId, string $idempotencyKey): OperationResult
     {
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/publish',
-            $payload,
-            $idempotencyKey
+            [
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $attributes
-     */
-    public function setMember(
-        string $roomId,
-        string $externalUserId,
-        string $role,
-        string $idempotencyKey,
-        array $attributes = [],
-    ): OperationResult {
-        $payload = $attributes;
-        $payload['role'] = $role;
-
-        return $this->command(
-            'PUT',
-            '/open/v1/rooms/' . rawurlencode($roomId) . '/members/' . rawurlencode($externalUserId),
-            $payload,
-            $idempotencyKey
-        );
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function createBroadcastCredential(string $roomId, string $idempotencyKey, array $payload = []): BroadcastCredential
+    public function createBroadcastCredential(string $roomId, string $idempotencyKey): BroadcastCredential
     {
         $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/broadcast-credential',
             [
-                'json' => $payload,
                 'idempotencyKey' => $idempotencyKey,
             ]
         );
@@ -122,72 +97,92 @@ final class LiveRooms
         return BroadcastCredential::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function stop(string $roomId, string $idempotencyKey, array $payload = []): OperationResult
+    public function stop(string $roomId, string $idempotencyKey): OperationResult
     {
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/stop',
-            $payload,
-            $idempotencyKey
+            [
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
     public function issueViewerTicket(
         string $roomId,
         string $externalUserId,
         string $origin,
         string $idempotencyKey,
-        array $payload = [],
+        ?int $ttl = null,
+        array $capabilities = [],
     ): Ticket {
-        $body = $payload;
-        $body['external_user_id'] = $externalUserId;
-        $body['origin'] = $origin;
+        $body = [
+            'external_user_id' => $externalUserId,
+            'origin' => $origin,
+        ];
+        if ($ttl !== null) {
+            $body['ttl'] = $ttl;
+        }
+        if ($capabilities !== []) {
+            $body['capabilities'] = $capabilities;
+        }
 
-        return $this->issueTicket(
+        $response = $this->client->request(
+            'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/viewer-tickets',
-            $body,
-            $idempotencyKey
+            [
+                'json' => $body,
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return Ticket::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
     public function issueOperatorTicket(
         string $roomId,
         string $externalUserId,
         string $origin,
         string $idempotencyKey,
-        array $payload = [],
+        ?int $ttl = null,
+        array $capabilities = [],
     ): Ticket {
-        $body = $payload;
-        $body['external_user_id'] = $externalUserId;
-        $body['origin'] = $origin;
+        $body = [
+            'external_user_id' => $externalUserId,
+            'origin' => $origin,
+        ];
+        if ($ttl !== null) {
+            $body['ttl'] = $ttl;
+        }
+        if ($capabilities !== []) {
+            $body['capabilities'] = $capabilities;
+        }
 
-        return $this->issueTicket(
+        $response = $this->client->request(
+            'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/operator-tickets',
-            $body,
-            $idempotencyKey
+            [
+                'json' => $body,
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return Ticket::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function revokeTicket(string $roomId, string $ticketId, string $idempotencyKey, array $payload = []): OperationResult
+    public function revokeTicket(string $roomId, string $ticketId, string $idempotencyKey): OperationResult
     {
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/tickets/' . rawurlencode($ticketId) . '/revoke',
-            $payload,
-            $idempotencyKey
+            [
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
     /**
@@ -204,52 +199,108 @@ final class LiveRooms
         return MessagesPage::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function sendComment(string $roomId, string $text, string $idempotencyKey, array $payload = []): OperationResult
+    public function sendComment(
+        string $roomId,
+        string $text,
+        string $idempotencyKey,
+        ?string $clientRequestId = null,
+    ): OperationResult
     {
-        $body = $payload;
-        $body['text'] = $text;
+        $body = ['text' => $text];
+        if ($clientRequestId !== null && $clientRequestId !== '') {
+            $body['client_request_id'] = $clientRequestId;
+        }
 
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/commands/comments',
-            $body,
-            $idempotencyKey
+            [
+                'json' => $body,
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function deleteComment(string $roomId, string $messageId, string $idempotencyKey, array $payload = []): OperationResult
+    public function deleteComment(
+        string $roomId,
+        string $messageId,
+        string $idempotencyKey,
+        ?string $reason = null,
+    ): OperationResult
     {
-        $body = $payload;
-        $body['message_id'] = $messageId;
+        $body = ['message_id' => $messageId];
+        if ($reason !== null && $reason !== '') {
+            $body['reason'] = $reason;
+        }
 
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/commands/delete-comment',
-            $body,
-            $idempotencyKey
+            [
+                'json' => $body,
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function muteUser(string $roomId, string $externalUserId, string $idempotencyKey, array $payload = []): OperationResult
+    public function muteUser(
+        string $roomId,
+        string $externalUserId,
+        string $idempotencyKey,
+        ?string $reason = null,
+    ): OperationResult
     {
-        $body = $payload;
-        $body['external_user_id'] = $externalUserId;
+        $body = ['external_user_id' => $externalUserId];
+        if ($reason !== null && $reason !== '') {
+            $body['reason'] = $reason;
+        }
 
-        return $this->command(
+        $response = $this->client->request(
             'POST',
             '/open/v1/rooms/' . rawurlencode($roomId) . '/commands/mute-user',
-            $body,
-            $idempotencyKey
+            [
+                'json' => $body,
+                'idempotencyKey' => $idempotencyKey,
+            ]
         );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
+    }
+
+    public function unmuteUser(
+        string $roomId,
+        string $externalUserId,
+        string $idempotencyKey,
+    ): OperationResult
+    {
+        $response = $this->client->request(
+            'POST',
+            '/open/v1/rooms/' . rawurlencode($roomId) . '/commands/unmute-user',
+            [
+                'json' => ['external_user_id' => $externalUserId],
+                'idempotencyKey' => $idempotencyKey,
+            ]
+        );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
+    }
+
+    public function setRoomMute(string $roomId, bool $enabled, string $idempotencyKey): OperationResult
+    {
+        $response = $this->client->request(
+            'POST',
+            '/open/v1/rooms/' . rawurlencode($roomId) . '/commands/room-mute',
+            [
+                'json' => ['enabled' => $enabled],
+                'idempotencyKey' => $idempotencyKey,
+            ]
+        );
+
+        return OperationResult::fromArray($response->data, $response->requestId);
     }
 
     /**
@@ -294,29 +345,4 @@ final class LiveRooms
         return RecordingsPage::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $body
-     */
-    private function issueTicket(string $path, array $body, string $idempotencyKey): Ticket
-    {
-        $response = $this->client->request('POST', $path, [
-            'json' => $body,
-            'idempotencyKey' => $idempotencyKey,
-        ]);
-
-        return Ticket::fromArray($response->data, $response->requestId);
-    }
-
-    /**
-     * @param array<string, mixed> $body
-     */
-    private function command(string $method, string $path, array $body, string $idempotencyKey): OperationResult
-    {
-        $response = $this->client->request($method, $path, [
-            'json' => $body,
-            'idempotencyKey' => $idempotencyKey,
-        ]);
-
-        return OperationResult::fromArray($response->data, $response->requestId);
-    }
 }

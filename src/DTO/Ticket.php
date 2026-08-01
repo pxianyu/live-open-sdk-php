@@ -8,7 +8,7 @@ final class Ticket extends AbstractDto
 {
     /**
      * @param array<string, mixed> $raw
-     * @param array<string, mixed> $capability
+     * @param list<string> $capabilities
      */
     public function __construct(
         string $requestId,
@@ -18,7 +18,7 @@ final class Ticket extends AbstractDto
         public readonly ?string $role,
         public readonly ?string $origin,
         public readonly ?string $expiresAt,
-        public readonly array $capability,
+        public readonly array $capabilities,
     ) {
         parent::__construct($requestId, $raw);
     }
@@ -36,7 +36,7 @@ final class Ticket extends AbstractDto
             self::stringValue($data, 'role'),
             self::stringValue($data, 'origin'),
             self::stringValue($data, 'expires_at'),
-            self::arrayValue($data, 'capability', 'capabilities')
+            array_values(self::arrayValue($data, 'capabilities'))
         );
     }
 }

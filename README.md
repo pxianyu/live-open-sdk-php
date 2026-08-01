@@ -52,9 +52,7 @@ $ticket = $client->liveRooms()->issueViewerTicket(
     externalUserId: 'user-42',
     origin: 'https://customer.example',
     idempotencyKey: 'watch-user-42-room-1',
-    payload: [
-        'ttl' => 60,
-    ],
+    ttl: 60,
 );
 ```
 
@@ -65,7 +63,7 @@ $ticket = $client->liveRooms()->issueViewerTicket(
 - `upsert(string $externalUserId, array $profile, string $idempotencyKey): User`
 - `batchUpsert(array $users, string $idempotencyKey): UserBatchResult`
 - `get(string $externalUserId): User`
-- `deactivate(string $externalUserId, string $idempotencyKey, array $payload = []): OperationResult`
+- `deactivate(string $externalUserId, string $idempotencyKey): OperationResult`
 
 ### `liveRooms()`
 
@@ -73,17 +71,18 @@ $ticket = $client->liveRooms()->issueViewerTicket(
 - `get(string $roomId): LiveRoom`
 - `list(array $filters = []): RoomList`
 - `update(string $roomId, array $attributes, string $idempotencyKey): LiveRoom`
-- `publish(string $roomId, string $idempotencyKey, array $payload = []): OperationResult`
-- `setMember(string $roomId, string $externalUserId, string $role, string $idempotencyKey, array $attributes = []): OperationResult`
-- `createBroadcastCredential(string $roomId, string $idempotencyKey, array $payload = []): BroadcastCredential`
-- `stop(string $roomId, string $idempotencyKey, array $payload = []): OperationResult`
-- `issueViewerTicket(string $roomId, string $externalUserId, string $origin, string $idempotencyKey, array $payload = []): Ticket`
-- `issueOperatorTicket(string $roomId, string $externalUserId, string $origin, string $idempotencyKey, array $payload = []): Ticket`
-- `revokeTicket(string $roomId, string $ticketId, string $idempotencyKey, array $payload = []): OperationResult`
+- `publish(string $roomId, string $idempotencyKey): OperationResult`
+- `createBroadcastCredential(string $roomId, string $idempotencyKey): BroadcastCredential`
+- `stop(string $roomId, string $idempotencyKey): OperationResult`
+- `issueViewerTicket(string $roomId, string $externalUserId, string $origin, string $idempotencyKey, ?int $ttl = null, array $capabilities = []): Ticket`
+- `issueOperatorTicket(string $roomId, string $externalUserId, string $origin, string $idempotencyKey, ?int $ttl = null, array $capabilities = []): Ticket`
+- `revokeTicket(string $roomId, string $ticketId, string $idempotencyKey): OperationResult`
 - `messages(string $roomId, array $filters = []): MessagesPage`
-- `sendComment(string $roomId, string $text, string $idempotencyKey, array $payload = []): OperationResult`
-- `deleteComment(string $roomId, string $messageId, string $idempotencyKey, array $payload = []): OperationResult`
-- `muteUser(string $roomId, string $externalUserId, string $idempotencyKey, array $payload = []): OperationResult`
+- `sendComment(string $roomId, string $text, string $idempotencyKey, ?string $clientRequestId = null): OperationResult`
+- `deleteComment(string $roomId, string $messageId, string $idempotencyKey, ?string $reason = null): OperationResult`
+- `muteUser(string $roomId, string $externalUserId, string $idempotencyKey, ?string $reason = null): OperationResult`
+- `unmuteUser(string $roomId, string $externalUserId, string $idempotencyKey): OperationResult`
+- `setRoomMute(string $roomId, bool $enabled, string $idempotencyKey): OperationResult`
 - `metrics(string $roomId, array $filters = []): Metrics`
 - `audienceSessions(string $roomId, array $filters = []): AudienceSessionsPage`
 - `recordings(string $roomId, array $filters = []): RecordingsPage`
@@ -91,21 +90,14 @@ $ticket = $client->liveRooms()->issueViewerTicket(
 ## Current Release Availability
 
 The current server release supports application authentication, user synchronization,
-room create/read/list/update/publish/stop, broadcast credentials, room tickets, SDK
-sessions, bootstrap, media refresh, and realtime credentials.
+room lifecycle, tickets, SDK sessions, media refresh, realtime credentials, room
+members, persistent message history, comments, moderation, metrics, audience sessions,
+and recordings.
 
-The following methods are reserved in the SDK contract but currently return
-`501 FEATURE_NOT_AVAILABLE` until the platform has persistent interaction history,
-outbox publishing, sequence catch-up, and recording/audience query support:
-
-- `setMember()`
-- `messages()`
-- `sendComment()`
-- `deleteComment()`
-- `muteUser()`
-- `metrics()`
-- `audienceSessions()`
-- `recordings()`
+`messages()` returns only events created through the Open Platform event store. Existing
+legacy H5 comments are not backfilled into this API. Realtime publishing uses the
+server-side outbox; callers should treat a successful command response as committed and
+consume the matching event through the browser SDK.
 
 ## Request Signing
 
@@ -134,9 +126,16 @@ NONCE
 ## Error Handling
 
 - 4xx/5xx responses throw `ApiException` subclasses.
+- Business failures expose the numeric response status through `getBusinessCode()` and the stable string identifier through `getErrorCode()`.
 - `curl` and transport failures throw `TransportException`.
 - JSON encode/decode problems throw `SerializationException`.
 - Request snapshots in exception context redact `X-Live-Signature`, and secret values are stripped from messages/context.
+
+GET requests and write requests carrying `Idempotency-Key` retry transient transport,
+`429`, and `5xx` failures up to three attempts. A numeric `Retry-After` header is
+honored before the next attempt. Every retry generates a new nonce and HMAC signature;
+write retries keep the original `Idempotency-Key` so the server can return the same
+business result without weakening nonce replay protection.
 
 ## Tests
 

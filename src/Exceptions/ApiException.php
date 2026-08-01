@@ -17,6 +17,7 @@ class ApiException extends LiveOpenException
         protected readonly ?string $requestId,
         protected readonly ?string $errorCode,
         array $context = [],
+        protected readonly ?int $businessCode = null,
     ) {
         parent::__construct($message, $context, $statusCode);
     }
@@ -36,6 +37,11 @@ class ApiException extends LiveOpenException
         return $this->errorCode;
     }
 
+    public function getBusinessCode(): ?int
+    {
+        return $this->businessCode;
+    }
+
     /**
      * @param array<string, mixed>|null $decoded
      * @param array<string, mixed> $context
@@ -50,11 +56,15 @@ class ApiException extends LiveOpenException
         $requestId = null;
         $message = 'Live Open API request failed.';
         $errorCode = null;
+        $businessCode = null;
 
         if (is_array($decoded)) {
             $requestId = self::stringFrom($decoded, 'request_id');
             $message = self::stringFromNested($decoded, [['error', 'message'], ['message']]) ?? $message;
             $errorCode = self::stringFromNested($decoded, [['error', 'code'], ['code']]);
+            $businessCode = isset($decoded['status']) && is_numeric($decoded['status'])
+                ? (int) $decoded['status']
+                : null;
         }
 
         $requestId ??= $response->header('X-Request-Id');
@@ -76,7 +86,14 @@ class ApiException extends LiveOpenException
             default => self::class,
         };
 
-        return new $exceptionClass($message, $response->statusCode, $requestId, $errorCode, $sanitizedContext);
+        return new $exceptionClass(
+            $message,
+            $response->statusCode,
+            $requestId,
+            $errorCode,
+            $sanitizedContext,
+            $businessCode
+        );
     }
 
     /**

@@ -15,6 +15,8 @@ final class Metrics extends AbstractDto
         array $raw,
         public readonly ?int $onlineCount,
         public readonly ?int $viewerCount,
+        public readonly ?int $watchDurationSeconds,
+        public readonly ?int $averageWatchDurationSeconds,
         public readonly ?int $commentCount,
         public readonly ?int $likeCount,
         public readonly array $series,
@@ -32,6 +34,8 @@ final class Metrics extends AbstractDto
             $data,
             self::intValue($data, 'online_count'),
             self::intValue($data, 'viewer_count'),
+            self::intValue($data, 'watch_duration_seconds'),
+            self::intValue($data, 'average_watch_duration_seconds'),
             self::intValue($data, 'comment_count'),
             self::intValue($data, 'like_count'),
             self::arrayValue($data, 'series')

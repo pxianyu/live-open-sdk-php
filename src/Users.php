@@ -48,16 +48,12 @@ final class Users
         return User::fromArray($response->data, $response->requestId);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function deactivate(string $externalUserId, string $idempotencyKey, array $payload = []): OperationResult
+    public function deactivate(string $externalUserId, string $idempotencyKey): OperationResult
     {
         $response = $this->client->request(
             'POST',
             '/open/v1/users/' . rawurlencode($externalUserId) . '/deactivate',
             [
-                'json' => $payload,
                 'idempotencyKey' => $idempotencyKey,
             ]
         );

@@ -19,6 +19,8 @@ use Throwable;
 
 final class LiveOpenClient
 {
+    private const MAX_RETRY_ATTEMPTS = 3;
+
     private readonly Transport $transport;
     private readonly HmacSigner $signer;
     private readonly Closure $timestampProvider;
@@ -79,36 +81,14 @@ final class LiveOpenClient
         $query = $options['query'] ?? [];
         $queryString = $this->signer->normalizeQuery($query);
         $body = $this->encodeJson($options['json'] ?? null);
-
-        $timestamp = (string) ($this->timestampProvider)();
-        $nonce = (string) ($this->nonceFactory)();
-        $signature = $this->signer->sign(
-            $method,
-            $normalizedPath,
-            $query,
-            $body,
-            $this->appKey,
-            $this->keyId,
-            $timestamp,
-            $nonce,
-            $this->appSecret
-        );
-
-        $headers = [
+        $headers = array_merge([
             'Accept' => 'application/json',
             'User-Agent' => 'company-live-open-sdk-php/1.0',
-            'X-Live-App-Key' => $this->appKey,
-            'X-Live-Key-Id' => $this->keyId,
-            'X-Live-Timestamp' => $timestamp,
-            'X-Live-Nonce' => $nonce,
-            'X-Live-Signature' => $signature,
-        ];
+        ], $options['headers'] ?? []);
 
         if ($body !== '') {
             $headers['Content-Type'] = 'application/json';
         }
-
-        $headers = array_merge($headers, $options['headers'] ?? []);
 
         if ($this->isWriteMethod($method)) {
             $idempotencyKey = $options['idempotencyKey'] ?? null;
@@ -126,26 +106,60 @@ final class LiveOpenClient
             $url .= '?' . $queryString;
         }
 
-        $request = new Request(
-            strtoupper($method),
-            $url,
-            $normalizedPath,
-            $headers,
-            $query,
-            $body,
-        );
-
-        try {
-            $response = $this->transport->send($request);
-        } catch (Throwable $throwable) {
-            throw TransportException::fromThrowable(
-                $throwable,
-                ['request' => $request->toArray(['X-Live-Signature'])],
-                [$this->appSecret, $signature]
+        $method = strtoupper($method);
+        $canRetry = $method === 'GET' || isset($headers['Idempotency-Key']);
+        for ($attempt = 1; ; $attempt++) {
+            // Nonce 是一次性的；重试保留业务幂等键，但每次都生成新的签名请求。
+            $timestamp = (string) ($this->timestampProvider)();
+            $nonce = (string) ($this->nonceFactory)();
+            $signature = $this->signer->sign(
+                $method,
+                $normalizedPath,
+                $query,
+                $body,
+                $this->appKey,
+                $this->keyId,
+                $timestamp,
+                $nonce,
+                $this->appSecret
             );
-        }
+            $request = new Request(
+                $method,
+                $url,
+                $normalizedPath,
+                array_merge($headers, [
+                    'X-Live-App-Key' => $this->appKey,
+                    'X-Live-Key-Id' => $this->keyId,
+                    'X-Live-Timestamp' => $timestamp,
+                    'X-Live-Nonce' => $nonce,
+                    'X-Live-Signature' => $signature,
+                ]),
+                $query,
+                $body,
+            );
 
-        return $this->parseResponse($request, $response, [$this->appSecret, $signature]);
+            try {
+                $response = $this->transport->send($request);
+            } catch (Throwable $throwable) {
+                if (!$canRetry || $attempt === self::MAX_RETRY_ATTEMPTS) {
+                    throw TransportException::fromThrowable(
+                        $throwable,
+                        ['request' => $request->toArray(['X-Live-Signature'])],
+                        [$this->appSecret, $signature]
+                    );
+                }
+
+                // 下次循环会重新签名，同一个幂等键仍会归并同一业务写入。
+                usleep($attempt * 100_000);
+                continue;
+            }
+
+            if (!$canRetry || !$this->isRetryableResponse($response) || $attempt === self::MAX_RETRY_ATTEMPTS) {
+                return $this->parseResponse($request, $response, [$this->appSecret, $signature]);
+            }
+
+            $this->waitForRetry($response, $attempt);
+        }
     }
 
     /**
@@ -190,7 +204,7 @@ final class LiveOpenClient
             $decoded = $candidate;
         }
 
-        if ($response->statusCode >= 400) {
+        if ($response->statusCode >= 400 || is_array($decoded['error'] ?? null)) {
             throw ApiException::fromResponse(
                 $response,
                 $decoded,
@@ -240,5 +254,21 @@ final class LiveOpenClient
     private function isWriteMethod(string $method): bool
     {
         return in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+    }
+
+    private function isRetryableResponse(Response $response): bool
+    {
+        return $response->statusCode === 429 || $response->statusCode >= 500;
+    }
+
+    private function waitForRetry(Response $response, int $attempt): void
+    {
+        $retryAfter = $response->header('Retry-After');
+        if ($retryAfter !== null && ctype_digit($retryAfter)) {
+            sleep((int)$retryAfter);
+            return;
+        }
+
+        usleep($attempt * 100_000);
     }
 }
