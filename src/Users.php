@@ -4,60 +4,56 @@ declare(strict_types=1);
 
 namespace Company\LiveOpenSdk;
 
-use Company\LiveOpenSdk\DTO\OperationResult;
-use Company\LiveOpenSdk\DTO\User;
-use Company\LiveOpenSdk\DTO\UserBatchResult;
-
 final class Users
 {
-    public function __construct(
-        private readonly LiveOpenClient $client,
-    ) {
+    public LiveOpenClient $client;
+
+    public function __construct(LiveOpenClient $client)
+    {
+        $this->client = $client;
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * 同步外部用户并返回原 H5 用户令牌。
+     *
+     * 省市等字段没有资料时可以省略；传空字符串表示主动清空平台已有资料。
+     *
+     * @param array{
+     *     nickname?: string,
+     *     avatar?: string,
+     *     realname?: string,
+     *     mobile?: string,
+     *     gender?: 0|1|2,
+     *     country?: string,
+     *     province?: string,
+     *     city?: string,
+     *     openid?: string,
+     *     unionid?: string,
+     *     wxapp_openid?: string,
+     *     app_openid?: string,
+     *     status?: 'active'|'inactive',
+     *     metadata?: array<string, mixed>,
+     *     source_updated_at?: string
+     * } $profile
+     * @return array<string, mixed>
      */
-    public function upsert(string $externalUserId, array $profile, string $idempotencyKey): User
+    public function upsert(string $externalUserId, array $profile): array
     {
-        $response = $this->client->request('PUT', '/open/v1/users/' . rawurlencode($externalUserId), [
+        return $this->client->request('PUT', '/open/v1/users/' . rawurlencode($externalUserId), [
             'json' => ['profile' => $profile],
-            'idempotencyKey' => $idempotencyKey,
-        ]);
-
-        return User::fromArray($response->data, $response->requestId);
+        ])->data;
     }
 
     /**
+     * 批量同步外部用户并返回每个用户的原 H5 用户令牌。
+     *
      * @param list<array<string, mixed>> $users
+     * @return array<string, mixed>
      */
-    public function batchUpsert(array $users, string $idempotencyKey): UserBatchResult
+    public function batchUpsert(array $users): array
     {
-        $response = $this->client->request('POST', '/open/v1/users/batch-upsert', [
+        return $this->client->request('POST', '/open/v1/users/batch-upsert', [
             'json' => ['users' => $users],
-            'idempotencyKey' => $idempotencyKey,
-        ]);
-
-        return UserBatchResult::fromArray($response->data, $response->requestId);
-    }
-
-    public function get(string $externalUserId): User
-    {
-        $response = $this->client->request('GET', '/open/v1/users/' . rawurlencode($externalUserId));
-
-        return User::fromArray($response->data, $response->requestId);
-    }
-
-    public function deactivate(string $externalUserId, string $idempotencyKey): OperationResult
-    {
-        $response = $this->client->request(
-            'POST',
-            '/open/v1/users/' . rawurlencode($externalUserId) . '/deactivate',
-            [
-                'idempotencyKey' => $idempotencyKey,
-            ]
-        );
-
-        return OperationResult::fromArray($response->data, $response->requestId);
+        ])->data;
     }
 }

@@ -9,15 +9,18 @@ use Throwable;
 
 class LiveOpenException extends RuntimeException
 {
+    protected array $context;
+
     /**
      * @param array<string, mixed> $context
      */
     public function __construct(
         string $message,
-        protected array $context = [],
+        array $context = [],
         int $code = 0,
-        ?Throwable $previous = null,
+        ?Throwable $previous = null
     ) {
+        $this->context = $context;
         parent::__construct($message, $code, $previous);
     }
 
@@ -50,7 +53,7 @@ class LiveOpenException extends RuntimeException
      * @param list<string> $secrets
      * @return mixed
      */
-    protected static function redactValue(mixed $value, array $secrets): mixed
+    protected static function redactValue($value, array $secrets)
     {
         if (is_string($value)) {
             return self::redactString($value, $secrets);

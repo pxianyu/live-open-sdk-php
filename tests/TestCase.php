@@ -8,7 +8,7 @@ use RuntimeException;
 
 abstract class TestCase
 {
-    protected function assertSame(mixed $expected, mixed $actual, string $message = ''): void
+    protected function assertSame($expected, $actual, string $message = ''): void
     {
         if ($expected !== $actual) {
             $this->fail($message !== '' ? $message : sprintf(
@@ -28,7 +28,7 @@ abstract class TestCase
 
     protected function assertNotContains(string $needle, string $haystack, string $message = ''): void
     {
-        if (str_contains($haystack, $needle)) {
+        if (strpos($haystack, $needle) !== false) {
             $this->fail($message !== '' ? $message : sprintf(
                 'Failed asserting that [%s] does not contain [%s].',
                 $haystack,
@@ -39,7 +39,7 @@ abstract class TestCase
 
     protected function assertContains(string $needle, string $haystack, string $message = ''): void
     {
-        if (!str_contains($haystack, $needle)) {
+        if (strpos($haystack, $needle) === false) {
             $this->fail($message !== '' ? $message : sprintf(
                 'Failed asserting that [%s] contains [%s].',
                 $haystack,

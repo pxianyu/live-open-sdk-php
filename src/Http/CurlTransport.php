@@ -8,10 +8,15 @@ use Company\LiveOpenSdk\Exceptions\TransportException;
 
 final class CurlTransport implements Transport
 {
+    private int $connectTimeoutSeconds;
+    private int $timeoutSeconds;
+
     public function __construct(
-        private readonly int $connectTimeoutSeconds = 10,
-        private readonly int $timeoutSeconds = 30,
+        int $connectTimeoutSeconds = 10,
+        int $timeoutSeconds = 30
     ) {
+        $this->connectTimeoutSeconds = $connectTimeoutSeconds;
+        $this->timeoutSeconds = $timeoutSeconds;
     }
 
     public function send(Request $request): Response
@@ -43,7 +48,7 @@ final class CurlTransport implements Transport
             CURLOPT_HEADERFUNCTION => static function ($curlHandle, string $headerLine) use (&$headers): int {
                 $trimmed = trim($headerLine);
 
-                if ($trimmed === '' || !str_contains($trimmed, ':')) {
+                if ($trimmed === '' || strpos($trimmed, ':') === false) {
                     return strlen($headerLine);
                 }
 

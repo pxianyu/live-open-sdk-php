@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "7ea61eb7a65fa9770be62439e800fe56fe3e5bb5",
+    "indexed_at": "2026-08-02T07:57:13Z",
+    "project": "live_open_sdk_php",
+    "nodes": 99,
+    "edges": 215,
+    "original_size": 1310720,
+    "compressed_size": 83128,
+    "compression_level": 9
+}

@@ -20,7 +20,7 @@ foreach ($testFiles as $file) {
     }
 
     $instance = new $className();
-    $methods = array_filter(get_class_methods($instance), static fn (string $method): bool => str_starts_with($method, 'test'));
+    $methods = array_filter(get_class_methods($instance), static fn (string $method): bool => strpos($method, 'test') === 0);
     sort($methods);
 
     foreach ($methods as $method) {

@@ -6,18 +6,31 @@ namespace Company\LiveOpenSdk\Http;
 
 final class Request
 {
+    public string $method;
+    public string $url;
+    public string $path;
+    public array $headers;
+    public array $query;
+    public string $body;
+
     /**
      * @param array<string, string> $headers
      * @param array<string, mixed> $query
      */
     public function __construct(
-        public readonly string $method,
-        public readonly string $url,
-        public readonly string $path,
-        public readonly array $headers,
-        public readonly array $query = [],
-        public readonly string $body = '',
+        string $method,
+        string $url,
+        string $path,
+        array $headers,
+        array $query = [],
+        string $body = ''
     ) {
+        $this->method = $method;
+        $this->url = $url;
+        $this->path = $path;
+        $this->headers = $headers;
+        $this->query = $query;
+        $this->body = $body;
     }
 
     /**

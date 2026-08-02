@@ -6,14 +6,21 @@ namespace Company\LiveOpenSdk\Http;
 
 final class Response
 {
+    public int $statusCode;
+    public array $headers;
+    public string $body;
+
     /**
      * @param array<string, string> $headers
      */
     public function __construct(
-        public readonly int $statusCode,
-        public readonly array $headers,
-        public readonly string $body,
+        int $statusCode,
+        array $headers,
+        string $body
     ) {
+        $this->statusCode = $statusCode;
+        $this->headers = $headers;
+        $this->body = $body;
     }
 
     public function header(string $name): ?string
