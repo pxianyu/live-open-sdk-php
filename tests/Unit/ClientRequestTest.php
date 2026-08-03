@@ -32,7 +32,7 @@ final class ClientRequestTest extends TestCase
         $user = $client->users()->upsert('member/a', $profile);
 
         $this->assertSame('h5-token', $user['access_token']);
-        $this->assertSame('/open/v1/users/member%2Fa', $transport->requests[0]->path);
+        $this->assertSame('/api/open/v1/users/member%2Fa', $transport->requests[0]->path);
         $requestBody = json_decode($transport->requests[0]->body, true);
         $this->assertSame('app_key_123', $requestBody['app_key']);
         $this->assertSame('app_secret_123', $requestBody['app_secret']);
@@ -48,6 +48,7 @@ final class ClientRequestTest extends TestCase
         $client = new LiveOpenClient('app_key_123', 'app_secret_123', 'https://open.example.com', $transport);
 
         $credential = $client->adminToken();
+        $this->assertSame('/api/open/v1/admin-token', $transport->requests[0]->path);
         $this->assertSame([
             'app_key' => 'app_key_123',
             'app_secret' => 'app_secret_123',

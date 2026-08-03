@@ -39,7 +39,7 @@ final class Users
      */
     public function upsert(string $externalUserId, array $profile): array
     {
-        return $this->client->request('PUT', '/open/v1/users/' . rawurlencode($externalUserId), [
+        return $this->client->request('PUT', '/api/open/v1/users/' . rawurlencode($externalUserId), [
             'json' => ['profile' => $profile],
         ])->data;
     }
@@ -52,7 +52,7 @@ final class Users
      */
     public function batchUpsert(array $users): array
     {
-        return $this->client->request('POST', '/open/v1/users/batch-upsert', [
+        return $this->client->request('POST', '/api/open/v1/users/batch-upsert', [
             'json' => ['users' => $users],
         ])->data;
     }

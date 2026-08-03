@@ -6,7 +6,7 @@
 2. 换取商户管理员 token，供第三方服务端调用原商户后台接口。
 
 SDK 不创建临时 ticket，不保存直播间、会话或消息副本，也不把 `AppSecret` 交给浏览器。
-调用 `/open/v1/*` 时，SDK 会自动把 `app_key`、`app_secret` 合并到 JSON 请求参数中。
+调用 `/api/open/v1/*` 时，SDK 会自动把 `app_key`、`app_secret` 合并到 JSON 请求参数中。
 
 ```text
 第三方服务端 -- AppKey/AppSecret --> 直播开放平台
@@ -48,7 +48,7 @@ $client = new LiveOpenClient(
 | --- | --- | --- |
 | `appKey` | 是 | 开放平台应用 Key |
 | `appSecret` | 是 | 开放平台应用 Secret，只能保存在服务端 |
-| `baseUrl` | 是 | 直播平台服务根地址，不包含 `/open/v1` |
+| `baseUrl` | 是 | 直播平台服务根地址，不包含 `/api/open/v1` |
 | `transport` | 否 | 自定义 HTTP Transport；默认使用 cURL |
 
 本地联调时传实际 HTTP 地址，例如 `http://127.0.0.1:8785`。生产环境使用 HTTPS。
@@ -211,10 +211,10 @@ $response = $client->adminRequest(
 
 ## 直接调用开放平台接口
 
-`request()` 用于调用当前 SDK 暂未提供命名方法的 `/open/v1` 接口：
+`request()` 用于调用当前 SDK 暂未提供命名方法的 `/api/open/v1` 接口：
 
 ```php
-$response = $client->request('POST', '/open/v1/admin-token');
+$response = $client->request('POST', '/api/open/v1/admin-token');
 
 echo $response->requestId;
 echo $response->statusCode;

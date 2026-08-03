@@ -45,7 +45,7 @@ final class LiveOpenClient
      */
     public function adminToken(): array
     {
-        return $this->request('POST', '/open/v1/admin-token')->data;
+        return $this->request('POST', '/api/open/v1/admin-token')->data;
     }
 
     /**
